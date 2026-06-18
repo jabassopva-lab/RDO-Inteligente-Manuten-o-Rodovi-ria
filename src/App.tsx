@@ -33,6 +33,8 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { RDO_TEMPLATES, Template } from "./templates";
 import { RdoResponse, PanoItem, EfetivoItem, EquipamentoItem } from "./types";
+import { collection, onSnapshot, doc, setDoc, deleteDoc } from "firebase/firestore";
+import { db } from "./firebase";
 
 export default function App() {
   const isPrintPage = typeof window !== 'undefined' && window.location.search.includes("print=true");
@@ -93,20 +95,61 @@ export default function App() {
   const [isPrintOverlayActive, setPrintOverlayActive] = useState<boolean>(false);
   const [isLocalPrintViewActive, setIsLocalPrintViewActive] = useState<boolean>(false);
 
-  // Helper safe storage to protect state against QuotaExceededError
-  const safeSaveSavedReports = (updatedList: any[]) => {
+  // Helper safe storage to protect state and synchronize immediately to the Cloud (Firestore)
+  const safeSaveSavedReports = async (updatedList: any[]) => {
+    // 1. Standard local state save for synchronous access and offline resilience
     try {
       localStorage.setItem("rdo_saved_reports_v2", JSON.stringify(updatedList));
     } catch (err: any) {
       console.error("Erro ao salvar relatórios no LocalStorage:", err);
       if (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-        console.warn("Aviso: Limite do LocalStorage atingido. O histórico local de diários não pôde ser atualizado. No entanto, o diário ativo está na memória e pode ser impresso normalmente.");
+        console.warn("Aviso: Limite do LocalStorage atingido. No entanto, sincronizando na nuvem.");
       }
+    }
+
+    // 2. Incremental cloud synchronization to Firestore
+    try {
+      const localStored = localStorage.getItem("rdo_saved_reports_v2_last_synced");
+      const lastSynced = localStored ? JSON.parse(localStored) : [];
+      
+      const lastSyncedMap = new Map<string, any>(lastSynced.map((item: any) => [item.id, item]));
+      const updatedMap = new Map<string, any>(updatedList.map((item: any) => [item.id, item]));
+
+      // Deleted items: find what was in lastSynced but is no longer in updatedList
+      for (const oldId of lastSyncedMap.keys()) {
+        if (!updatedMap.has(oldId)) {
+          try {
+            await deleteDoc(doc(db, "reports", oldId));
+            console.log("Deletado do Firestore com sucesso:", oldId);
+          } catch (deleteErr) {
+            console.error(`Erro ao deletar documento ${oldId} do Firestore:`, deleteErr);
+          }
+        }
+      }
+
+      // New or updated items: find what is new or changed
+      for (const [id, item] of updatedMap.entries()) {
+        const oldItem = lastSyncedMap.get(id);
+        if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
+          try {
+            await setDoc(doc(db, "reports", id), item);
+            console.log("Sincronizado item no Firestore:", id);
+          } catch (setErr) {
+            console.error(`Erro ao sincronizar documento ${id} para o Firestore:`, setErr);
+          }
+        }
+      }
+
+      // Keep last_synced log up-to-date
+      localStorage.setItem("rdo_saved_reports_v2_last_synced", JSON.stringify(updatedList));
+    } catch (cloudErr) {
+      console.error("Erro geral na sincronização com Firestore:", cloudErr);
     }
   };
 
-  // Load saved reports from LocalStorage
+  // Load saved reports from Firestore in Real-time (with LocalStorage as synchronous bootstrap fallback)
   useEffect(() => {
+    // 1. First load synchronously from LocalStorage to avoid UI flicker while waiting for cloud
     try {
       const stored = localStorage.getItem("rdo_saved_reports_v2");
       if (stored) {
@@ -123,8 +166,49 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.error("Erro ao carregar histórico local:", e);
+      console.error("Erro ao carregar histórico local inicial:", e);
     }
+
+    // 2. Then set up real-time bidirectional synchronization with Cloud Firestore
+    let unsubscribe = () => {};
+    try {
+      const reportsCol = collection(db, "reports");
+      unsubscribe = onSnapshot(reportsCol, (snapshot) => {
+        const list: any[] = [];
+        snapshot.forEach((snapDoc) => {
+          list.push({ ...snapDoc.data(), id: snapDoc.id });
+        });
+        
+        // Sort by createdAt descending or any date
+        list.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        setSavedReports(list);
+        
+        // Sync to localStorage and our last synced backup to avoid loop triggers
+        localStorage.setItem("rdo_saved_reports_v2", JSON.stringify(list));
+        localStorage.setItem("rdo_saved_reports_v2_last_synced", JSON.stringify(list));
+
+        if (list.length > 0) {
+          const maxNum = list.reduce((max: number, r: any) => {
+            const num = r.rdoNumber || r.data?.rdoNumber || 0;
+            return num > max ? num : max;
+          }, 0);
+          setRdoNumber(maxNum + 1);
+        } else {
+          setRdoNumber(1);
+        }
+      }, (error) => {
+        console.warn("Aviso: Falha ao carregar do Firestore (pode ser problema de conexão/permissão), usando fallback Offline:", error);
+      });
+    } catch (fsError) {
+      console.warn("Erro ao registrar onSnapshot do Firestore:", fsError);
+    }
+
+    return () => unsubscribe();
   }, []);
 
   // Load print payload if on print page with window.opener fallback
