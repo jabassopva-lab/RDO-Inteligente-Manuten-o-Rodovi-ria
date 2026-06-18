@@ -1,0 +1,6 @@
+{
+  "name": "SaaS RDO Inteligente",
+  "description": "Sistema Inteligente de Saneamento, Auditoria e Processamento de Relatórios Diários de Obra de Pavimentação.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Base custom styles to fit clean minimalism */
+html, body {
+  background-color: #f8fafc;
+}
+
+/* Custom animation classes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Print layout optimizations */
+@media print {
+  /* Hide all elements on the page by default */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Reveal only our designated printable report card */
+  #laudo-tecnico-print,
+  #laudo-tecnico-print * {
+    visibility: visible;
+  }
+  
+  /* Clean absolute layout to render fully across pages without viewport limitations */
+  #laudo-tecnico-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-size: 8.5px !important;
+    line-height: 1.15 !important;
+  }
+
+  /* Extreme compacting of section gaps */
+  #laudo-tecnico-print.space-y-4,
+  #laudo-tecnico-print .space-y-4 {
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+  }
+
+  #laudo-tecnico-print > div {
+    margin-top: 6px !important;
+    margin-bottom: 6px !important;
+  }
+
+  #laudo-tecnico-print h1 {
+    font-size: 15px !important;
+    margin-bottom: 1px !important;
+  }
+
+  #laudo-tecnico-print h3 {
+    font-size: 9px !important;
+    margin-bottom: 2px !important;
+    padding-bottom: 1px !important;
+  }
+
+  #laudo-tecnico-print .grid {
+    gap: 4px !important;
+  }
+
+  #laudo-tecnico-print p, 
+  #laudo-tecnico-print span, 
+  #laudo-tecnico-print td, 
+  #laudo-tecnico-print th {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+    line-height: 1.15 !important;
+  }
+
+  #laudo-tecnico-print td,
+  #laudo-tecnico-print th {
+    padding: 2.5px 3.5px !important;
+    font-size: 8px !important;
+  }
+
+  #laudo-tecnico-print .p-3,
+  #laudo-tecnico-print .p-2.5,
+  #laudo-tecnico-print .p-2 {
+    padding: 3px 4px !important;
+  }
+
+  #laudo-tecnico-print .pt-6 {
+    padding-top: 8px !important;
+  }
+
+  #laudo-tecnico-print .pt-4 {
+    padding-top: 4px !important;
+  }
+
+  #laudo-tecnico-print .gap-6 {
+    gap: 12px !important;
+  }
+
+  /* Evidenciar o Resumo Executivo colorindo as caixas e garantindo que apareçam na folha impressa */
+  #laudo-tecnico-print .bg-blue-50\/65,
+  #laudo-acumulado-print .bg-blue-50\/65 {
+    background-color: #f0f7ff !important;
+    border: 1px solid #cce3fd !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force tables with long contents to expand vertically instead of scrolling horizontally */
+  #laudo-tecnico-print .overflow-x-auto,
+  #laudo-tecnico-print table,
+  #laudo-acumulado-print .overflow-x-auto,
+  #laudo-acumulado-print table {
+    overflow-x: visible !important;
+    display: table !important;
+    width: 100% !important;
+  }
+
+  /* Ensure rows stay grouped instead of separating mid-page */
+  #laudo-tecnico-print tr,
+  #laudo-acumulado-print tr {
+    page-break-inside: avoid !important;
+  }
+
+  #laudo-tecnico-print h2,
+  #laudo-tecnico-print h3,
+  #laudo-tecnico-print h4,
+  #laudo-acumulado-print h2,
+  #laudo-acumulado-print h3,
+  #laudo-acumulado-print h4 {
+    page-break-after: avoid !important;
+  }
+
+  /* Expand nested divs to remove max height scrollbars during print */
+  #laudo-tecnico-print div,
+  #laudo-acumulado-print div {
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+
+  .avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
